@@ -8,3 +8,8 @@
 /dataSources.local.xml
 # Editor-based HTTP Client requests
 /httpRequests/
+
+# certificates and keys
+common/security/certificates/cert.pem
+common/security/keys/key.pem
+common/security/certout 

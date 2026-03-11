@@ -216,16 +216,25 @@ int server_create(Route routes[], const char *port)
                 // running endpoint function
                 dispatch_request(new_fd, httpRequest.method, httpRequest.path, httpRequest.json, routes);
                 
-                const char *http_response=
+                const char *json_body = "{\"status\":\"connection succeeded\"}";
+                char http_response[512];
+
+                // calculates the body size
+                int body_len = strlen(json_body);
+
+                // mounts the response
+                sprintf(http_response,
                     "HTTP/1.1 200 OK\r\n"
                     "Content-Type: application/json\r\n"
-                    "Content-Length: 26\r\n"
+                    "Content-Length: %d\r\n"
                     "Connection: close\r\n"
                     "\r\n"
-                    "{\"status\":\"conection succeded\"}";
+                    "%s", 
+                    body_len, json_body);
 
+                // returns the data status
                 if (send(new_fd, http_response, strlen(http_response), 0) == -1)
-                    perror("send");       
+                    perror("send");     
             }          
 
             // ---------------------

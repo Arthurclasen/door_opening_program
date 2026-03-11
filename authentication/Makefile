@@ -1,6 +1,6 @@
 CC = gcc
 TARGET = authentication_out
-SOURCE = common/network/network.c common/network/cJSON/cJSON.c authentication/authentication.c
+SOURCE = common/network/network.c common/cJSON/cJSON.c authentication/authentication.c
 LIBS = -lmysqlclient
 
 all : $(TARGET)
