@@ -65,7 +65,7 @@ int main()
     MYSQL *conn = mysql_init(NULL);
     if (!mysql_real_connect(conn, "mysql-db", db_username, db_password, db_databasename, 3306, NULL, 0))
     {
-        printf("Erro: %s\n", mysql_error(conn));
+        printf("Error: %s\n", mysql_error(conn));
         return 1;
     }
     

@@ -8,7 +8,6 @@
 #include <openssl/provider.h>
 #include <stdio.h>
 
-
 int add_extensions(X509 *x509)
 {
     X509_EXTENSION *ext = NULL;
@@ -106,7 +105,7 @@ int main()
     
     d = X509_set_subject_name(x509, name);
     e = X509_set_issuer_name(x509, name);
-    X509_NAME_free(name);   // free the name
+    X509_NAME_free(name);   // free the name 
     if (unlikely(a != 1) || unlikely(b != 1) || unlikely(c != 1) || unlikely(d != 1) || unlikely(e != 1))
     {
         printf("Error during naming certificate\n");

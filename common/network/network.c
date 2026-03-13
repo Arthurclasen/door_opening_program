@@ -20,6 +20,8 @@ credits to Beej's Guide to Network Programming
 #include <asm-generic/signal-defs.h>
 #include "../cJSON/cJSON.h"
 #include "network.h"
+#include <openssl/ssl.h>
+#include "../security/tls.h"
 
 #define BACKLOG 10  // how many pending connections queue will have
 
@@ -47,7 +49,7 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 // 'restAPI' function
-void dispatch_request(int client_fd, char *method, char *path, cJSON *json_data, Route *routes)
+void dispatch_request(SSL *ssl, int client_fd, char *method, char *path, cJSON *json_data, Route *routes)
 {
     int i = 0;
     int found = 0;
@@ -82,7 +84,7 @@ void dispatch_request(int client_fd, char *method, char *path, cJSON *json_data,
     if (found == 0)
     {
         char *not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-        send(client_fd, not_found, strlen(not_found), 0);
+        SSL_write(ssl, not_found, strlen(not_found));
     }
 }
 
@@ -98,6 +100,16 @@ int server_create(Route routes[], const char *port)
     int yes=1;
     char s[INET6_ADDRSTRLEN];
     int rv;
+
+    // OpenSSL variables (for TLS)
+    OSSL_LIB_CTX *libctx = OSSL_LIB_CTX_new();
+    // TLS context built in OpenSSL
+    SSL_CTX *ctx = SSL_CTX_new_ex(libctx, NULL, TLS_server_method());   // context knowing it's library
+    if (ctx == NULL) 
+    {
+        ERR_print_errors_fp(stderr);
+        return -1;
+    }
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family     = AF_INET;        // ipv4
@@ -165,6 +177,7 @@ int server_create(Route routes[], const char *port)
     }
 
     printf("server: waiting for connections...\n");
+    tls_create(ctx, 3);         // stablishing TLS connection
     
     while(1)    // main accept() loop
     {
@@ -182,12 +195,14 @@ int server_create(Route routes[], const char *port)
 
         if (!fork())    // child process
         {
+            SSL *ssl = SSL_new(ctx);   
+            tls_connect(ssl, sockfd);   // connecting using TLS  
             close(sockfd);  // child doesn't need listener
             char buf[1024];
             // function defined here
 
             // receiving HTTP data
-            int bytes_received = recv(new_fd, buf, sizeof(buf) - 1, 0);
+            int bytes_received = SSL_read(ssl, buf, sizeof(buf) - 1);
             if (bytes_received > 0)
             {
                 buf[bytes_received] = '\0';
@@ -214,7 +229,7 @@ int server_create(Route routes[], const char *port)
                 }
 
                 // running endpoint function
-                dispatch_request(new_fd, httpRequest.method, httpRequest.path, httpRequest.json, routes);
+                dispatch_request(ssl, new_fd, httpRequest.method, httpRequest.path, httpRequest.json, routes);
                 
                 const char *json_body = "{\"status\":\"connection succeeded\"}";
                 char http_response[512];
@@ -233,8 +248,8 @@ int server_create(Route routes[], const char *port)
                     body_len, json_body);
 
                 // returns the data status
-                if (send(new_fd, http_response, strlen(http_response), 0) == -1)
-                    perror("send");     
+                if (SSL_write(ssl, http_response, strlen(http_response)) == 1)
+                    perror("SSL write");     
             }          
 
             // ---------------------
