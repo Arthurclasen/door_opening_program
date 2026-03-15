@@ -53,7 +53,6 @@ void dispatch_request(SSL *ssl, int client_fd, char *method, char *path, cJSON *
 {
     int i = 0;
     int found = 0;
-
     // try to find the sentinel {NULL, NULL, NULL, 0}
     while (routes[i].path != NULL)
     {
@@ -178,7 +177,7 @@ int server_create(Route routes[], const char *port)
 
     printf("server: waiting for connections...\n");
     tls_create(ctx, 3);         // stablishing TLS connection
-    
+
     while(1)    // main accept() loop
     {
         sin_size = sizeof their_addr;
@@ -192,12 +191,17 @@ int server_create(Route routes[], const char *port)
 
         // transforms interface data into binary
         inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
-
         if (!fork())    // child process
         {
-            SSL *ssl = SSL_new(ctx);   
-            tls_connect(ssl, sockfd);   // connecting using TLS  
             close(sockfd);  // child doesn't need listener
+            SSL *ssl = SSL_new(ctx);  
+
+            // connecting using TLS  
+            if (tls_connect(ssl, new_fd) != 0) {
+                SSL_free(ssl);
+                close(new_fd);
+                exit(1);
+            }
             char buf[1024];
             // function defined here
 
@@ -213,7 +217,7 @@ int server_create(Route routes[], const char *port)
                 char *cl = strstr(buf, "Content-Length:");
                 httpRequest.content_length = 0;
                 if (cl) {
-                    sscanf(cl, "Content-Length: %d", &httpRequest.content_length);
+                    sscanf(cl, "Content-Length: %d\n", &httpRequest.content_length);
                     printf("Content-Length: %d\n", httpRequest.content_length);
                 }
 
@@ -248,12 +252,17 @@ int server_create(Route routes[], const char *port)
                     body_len, json_body);
 
                 // returns the data status
-                if (SSL_write(ssl, http_response, strlen(http_response)) == 1)
+                if (SSL_write(ssl, http_response, strlen(http_response)) <= 0)
                     perror("SSL write");     
-            }          
+            }  
+            else 
+            {
+                printf("Error while reading\n");
+            }        
 
             // ---------------------
-
+            SSL_shutdown(ssl);
+            SSL_free(ssl);
             close(new_fd);
             exit(0);
         }

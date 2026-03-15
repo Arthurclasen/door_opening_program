@@ -32,6 +32,7 @@ WORKDIR /app
 
 # copy the binary made in the builder
 COPY --from=builder /app/authentication_out /app/
+COPY --from=builder /app/common/    /app/common/
 
 RUN chmod +777 authentication_out
 

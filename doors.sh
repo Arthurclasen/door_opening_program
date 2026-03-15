@@ -1,7 +1,5 @@
 #!/bin/bash
 
-SERVER_URL="http://localhost:3490/appdoor"
-
 case "$1" in
     login)
         echo "=============="
@@ -12,9 +10,12 @@ case "$1" in
         read -sp "Password: " password
         echo ""
 
-        response=$(curl -s -X POST "$SERVER_URL/login" \
-        -H "Content-Type: application/json" \
-        -d "{\"user\":\"$username\", \"pass\":\"$password\"}")
+        BODY="{\"user\":\"$username\",\"pass\":\"$password\"}"
+        LEN=${#BODY}
+
+        response=$(printf "POST /appdoor/login HTTP/1.1\r\nHost: 172.18.0.3\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s" \
+        "$LEN" "$BODY" \
+        | openssl s_client -connect 172.18.0.3:3490 -showcerts 2>/dev/null)
 
         echo "==========================="
         echo " SERVER RESPONSE: $response"
@@ -30,9 +31,9 @@ case "$1" in
         read -sp "Password: " password
         echo ""
 
-        response=$(curl -s -X POST "$SERVER_URL/create" \
-        -H "Content-Type: application/json" \
-        -d "{\"user\":\"$username\", \"pass\":\"$password\"}")
+        response=$(printf "POST /appdoor/create HTTP/1.1\r\nHost: 172.18.0.3\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s" \
+        "$LEN" "$BODY" \
+        | openssl s_client -connect 172.18.0.3:3490 -showcerts 2>/dev/null)
 
         echo "==========================="
         echo " SERVER RESPONSE: $response"
